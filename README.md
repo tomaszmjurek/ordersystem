@@ -5,7 +5,7 @@ System for processing shopping orders. Writen in Event Driven Architecture. Enri
 <img src=https://github.com/tomaszmjurek/readme-images/blob/master/order-system.png>
 
 ## Motivation
-This service is created for learning and fun to better understand Kafka, Event Driven Architecture, Reactive Programming using Webflux and Spring Boot.
+This service is created for learning with fun to better understand Kafka, Event Driven Architecture, Reactive Programming using Webflux and Spring Boot.
 
 ## Microservices:
 
@@ -15,9 +15,10 @@ This service is created for learning and fun to better understand Kafka, Event D
 
 ## Workflow:
 
-1. The Order Service receives an order request and publishes an event to a Kafka topic.
-2. The Inventory Service listens to the Kafka topic, updates the inventory, and publishes an event with the inventory status.
-3. The Shipping Service listens to the inventory status topic, processes the shipping, and publishes an event with the shipping status.
+1. The Order Service receives an order request via API and publishes an event to a Kafka topic "order-requests".
+2. The Inventory Service listens to the Kafka topic "order-requests", updates the inventory, and publishes an event on topic "shipping-requests".
+3. The Shipping Service listens to the "shipping-requests" topic, processes the shipping, and publishes an event with the "order-statuses" during the whole process of shipping the order.
+4. Order Services listens to events with "order-statuses". Exposes order status to API clients.
 
 ## Running application
 1. Make sure you have Docker environment configured and running on your machine (ie. Docker Desktop for Windows)
