@@ -3,6 +3,7 @@ package com.tj.inventoryservice.service;
 import com.tj.inventoryservice.dto.CreateProductRequestDTO;
 import com.tj.inventoryservice.dto.UpdateProductRequestDTO;
 import com.tj.inventoryservice.exception.ProductAlreadyExistsException;
+import com.tj.inventoryservice.exception.ProductDoesNotExistException;
 import com.tj.inventoryservice.model.Item;
 import com.tj.inventoryservice.model.Order;
 import com.tj.inventoryservice.model.Product;
@@ -23,7 +24,7 @@ public class InventoryService {
     public void processOrder(Order order) {
         final var itemsToSend = takeItemsFromInventory(order.items());
         if (itemsToSend.size() > 0) {
-            log.info("Will be sending items: {}", itemsToSend);
+            log.info("Will be shipping items: {}", itemsToSend);
         } else {
             log.warn("Cannot finalize order, no products available");
         }
@@ -39,15 +40,18 @@ public class InventoryService {
 
         itemsToTake.forEach(item -> {
             try {
-                Product product = productRepository.findById(item.productId().toString()).orElseThrow();
+                Product product = productRepository.findById(item.productId()).orElseThrow();
                 int availableQuantity = getAvailableQuantity(product, item);
                 if (availableQuantity > 0) {
-                    log.info("Taking {} products {} from stock", availableQuantity, product.getId());
+                    log.info("Taking {} product(s) {} from {} available", availableQuantity, product.getName(), product.getQuantity());
                     takenItems.add(new Item(item.productId(), availableQuantity));
                     product.setQuantity(product.getQuantity() - availableQuantity);
+                    productRepository.save(product);
                 }
             } catch (NoSuchElementException e) {
                 log.error("Product with id {} was not found and will be skipped", item.productId());
+            } catch (RuntimeException e) {
+                log.error("Could not process order", e);
             }
         });
         return takenItems;
@@ -75,9 +79,10 @@ public class InventoryService {
     }
 
     public void updateProduct(String productId, UpdateProductRequestDTO requestDTO) {
-        Product product = productRepository.findById(productId).orElseThrow();
-        if (requestDTO.name() != null) product.setName(requestDTO.name());
-        if (requestDTO.quantity() != null) product.setQuantity(requestDTO.quantity());
+        var product = productRepository.findById(UUID.fromString(productId));
+        if (product.isEmpty()) throw new ProductDoesNotExistException(productId);
+        if (requestDTO.name() != null) product.get().setName(requestDTO.name());
+        if (requestDTO.quantity() != null) product.get().setQuantity(requestDTO.quantity());
     }
 
     public List<Product> getProducts() {

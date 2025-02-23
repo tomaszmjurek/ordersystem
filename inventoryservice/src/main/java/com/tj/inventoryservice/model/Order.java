@@ -7,7 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 @JsonDeserialize
-@JsonSerialize
 public record Order(UUID orderId, String customerId, List<Item> items) {
 
 }

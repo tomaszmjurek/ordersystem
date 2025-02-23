@@ -3,6 +3,7 @@ package com.tj.inventoryservice.api;
 import com.tj.inventoryservice.dto.CreateProductRequestDTO;
 import com.tj.inventoryservice.dto.UpdateProductRequestDTO;
 import com.tj.inventoryservice.exception.ProductAlreadyExistsException;
+import com.tj.inventoryservice.exception.ProductDoesNotExistException;
 import com.tj.inventoryservice.model.Product;
 import com.tj.inventoryservice.service.InventoryService;
 import lombok.RequiredArgsConstructor;
@@ -32,8 +33,12 @@ public class InventoryController {
 
     @PatchMapping("/{productId}")
     public ResponseEntity<Void> patch(@PathVariable String productId, @RequestBody UpdateProductRequestDTO requestDTO) {
-        inventoryService.updateProduct(productId, requestDTO);
-        return new ResponseEntity<>(HttpStatus.OK);
+        try {
+            inventoryService.updateProduct(productId, requestDTO);
+            return new ResponseEntity<>(HttpStatus.OK);
+        } catch (ProductDoesNotExistException e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+        }
     }
 
     @GetMapping

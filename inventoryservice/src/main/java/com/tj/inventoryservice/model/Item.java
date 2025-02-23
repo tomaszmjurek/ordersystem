@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 
 import java.util.UUID;
 
-@JsonSerialize
 @JsonDeserialize
 public record Item(UUID productId, int quantity) {
 }
