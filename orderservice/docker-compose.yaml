@@ -26,3 +26,12 @@ services:
       - kafka
     extra_hosts:
       - localhost:host-gateway
+
+  postgres:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: pg-order-system
+    ports:
+      - "5432:5432"
