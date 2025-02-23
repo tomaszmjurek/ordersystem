@@ -2,6 +2,7 @@ package com.tj.inventoryservice.service;
 
 import com.tj.inventoryservice.dto.CreateProductRequestDTO;
 import com.tj.inventoryservice.dto.UpdateProductRequestDTO;
+import com.tj.inventoryservice.exception.ProductAlreadyExistsException;
 import com.tj.inventoryservice.model.Item;
 import com.tj.inventoryservice.model.Order;
 import com.tj.inventoryservice.model.Product;
@@ -10,8 +11,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -22,7 +22,11 @@ public class InventoryService {
 
     public void processOrder(Order order) {
         final var itemsToSend = takeItemsFromInventory(order.items());
-        log.info("Will be sending items: {}", itemsToSend);
+        if (itemsToSend.size() > 0) {
+            log.info("Will be sending items: {}", itemsToSend);
+        } else {
+            log.warn("Cannot finalize order, no products available");
+        }
         // todo kafka send to shipping service
     }
 
@@ -34,15 +38,18 @@ public class InventoryService {
         List<Item> takenItems = new ArrayList<>();
 
         itemsToTake.forEach(item -> {
-            Product product = productRepository.findById(item.productId()).orElseThrow(); // todo not present handle
-            int availableQuantity = getAvailableQuantity(product, item);
-            if (availableQuantity > 0) {
-                log.info("Taking {} products {} from stock", availableQuantity, product.getId());
-                takenItems.add(new Item(item.productId(), availableQuantity));
-                product.setQuantity(product.getQuantity() - availableQuantity);
+            try {
+                Product product = productRepository.findById(item.productId().toString()).orElseThrow();
+                int availableQuantity = getAvailableQuantity(product, item);
+                if (availableQuantity > 0) {
+                    log.info("Taking {} products {} from stock", availableQuantity, product.getId());
+                    takenItems.add(new Item(item.productId(), availableQuantity));
+                    product.setQuantity(product.getQuantity() - availableQuantity);
+                }
+            } catch (NoSuchElementException e) {
+                log.error("Product with id {} was not found and will be skipped", item.productId());
             }
         });
-
         return takenItems;
     }
 
@@ -55,14 +62,25 @@ public class InventoryService {
         return item.quantity();
     }
 
-    public void addNewProduct(CreateProductRequestDTO requestDTO) {
-        Product product = new Product(requestDTO.id(), requestDTO.name(), requestDTO.quantity());
+    public UUID addNewProduct(CreateProductRequestDTO requestDTO) {
+        Optional<Product> existing = productRepository.findByName(requestDTO.name());
+        if (existing.isPresent()) {
+            log.warn("Cannot create product {} that already exists", requestDTO.name());
+            throw new ProductAlreadyExistsException(requestDTO.name());
+        }
+        Product product = new Product(UUID.randomUUID(), requestDTO.name(), requestDTO.quantity());
         productRepository.save(product);
+        log.info("New product {} added", product.getId());
+        return product.getId();
     }
 
     public void updateProduct(String productId, UpdateProductRequestDTO requestDTO) {
         Product product = productRepository.findById(productId).orElseThrow();
         if (requestDTO.name() != null) product.setName(requestDTO.name());
         if (requestDTO.quantity() != null) product.setQuantity(requestDTO.quantity());
+    }
+
+    public List<Product> getProducts() {
+        return productRepository.findAll();
     }
 }

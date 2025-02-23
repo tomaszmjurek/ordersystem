@@ -1,4 +1,4 @@
 package com.tj.inventoryservice.dto;
 
-public record CreateProductRequestDTO(String id, String name, Integer quantity) {
+public record CreateProductRequestDTO(String name, int quantity) {
 }
